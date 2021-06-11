@@ -8,18 +8,21 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
+import lesson
 from time import sleep, localtime, time, mktime, strptime
-from lesson import Lesson
 
+# sometimes its inherently impossible to to execute a task modularyly: in this
+# case a task can raise a subtask exception informing the task handler to 
+# schedule a followup task
+class FollowUpTaskException(Exception):
+    def __init__(self,task):
+        self.task = task
 
 # TODO: check how to do this cleaner?
 driver = None
-
-
 def set_driver(dr):
     global driver
     driver = dr
-
 
 # helper function to make code more readable
 def wait_for_element(attribute, string, multiple=False, timeout=15, debug=False):
@@ -58,7 +61,6 @@ def wait_for_clickable(attribute, string, timeout=15):
 def esc(code):
     return f"\033[{code}"
 
-
 # prints while moving the prompt '> ' down
 # TODO: maybee generalize this for arbitrary promt strings
 def prompt_print(*args):
@@ -67,13 +69,16 @@ def prompt_print(*args):
     print("\n> ", end="")
 
 
-def safe_page_load(url):
+def safe_page_load(url, debug=False):
+    if debug:
+        print("soft load", url)
     if driver.current_url == url:
         tmp = driver.find_element_by_xpath("/html")
         driver.get(url)
         WebDriverWait(driver, 2).until(EC.staleness_of(tmp))
     else:
         driver.get(url)
+        # TODO: does not work with redirects
         while (driver.current_url) != url:
             sleep(0.3)
     sleep(0.3)
@@ -90,7 +95,7 @@ QUERYSIZE = 20
 
 
 def query_trainings(url, debug=False):
-    safe_page_load(url)
+    safe_page_load(url, debug)
     trainings = []
     try:
         # find all days where we have offers
@@ -109,44 +114,34 @@ def query_trainings(url, debug=False):
                     # offer.find_element_by_class_name("offer__time")
                     # do magic parsing - again reverse engineered from
                     # the given output string in the html
-                    l = Lesson()
+                    l = lesson.Lesson()
                     (l.weekday, l.day, l.month) = (weekday, day, month)
                     l.url = offer.get_attribute("href")
                     l.lesson_id = l.url[-6:]
                     split = offer.text.split("\n")
                     if debug:
                         prompt_print(len(split), split)
-                    l.start = split[0]
-                    l.end = split[1][-5:]
-                    l.sport = split[2]
-                    l.niveau = split[3]
-                    l.facility = split[4]
-                    index_shift = 1
-                    if split[5].isnumeric():
-                        index_shift = 0
-                        # unleaded training
-                    else:
-                        l.trainer = split[5]
-                    opt = split[5 + index_shift]
-                    enrollmnt_option = ""
-                    if opt == "Keine freien":
-                        enrollmnt_option = "fully booked"
-                    elif opt == "Einschreiben möglich":
-                        enrollmnt_option = "window not open"
-                    elif opt.isnumeric() and split[6 + index_shift] == "freie Plätze":
-                        enrollmnt_option = opt + " slots"
-                    l.enrollment_string = enrollmnt_option
-                    trainings.append(l)  # TODO:
+                    try:
+                        l = lesson.from_split(l, split, debug=debug)
+                        trainings.append(l)
+                        prompt_print(l)
+                    except IndexError:
+                        # some other format we don't know - as a backup solution just print split
+                        trainings.append(l)
+                        prompt_print(
+                            "{:6} | {} {}{}\t".format(
+                                self.lesson_id, self.weekday[:2], self.day, self.month
+                            ),
+                            *split,
+                        )
                     if len(trainings) >= QUERYSIZE:
                         raise IndexError("query limit")
-                    prompt_print(l)
             except (NoSuchElementException):
                 # TODO: open browser interactively to let user fix himself
                 pass
     except IndexError as er:
         if str(er) != "query limit":
             raise er
-
 
 def query_inscribed(debug=False):
     url = "https://schalter.asvz.ch/tn/my-lessons"
@@ -165,32 +160,41 @@ def query_inscribed(debug=False):
     except TimeoutException:
         prompt_print("Error: page not loaded")
 
+def lesson_properties(lesson_id,show=False,debug=False):
+    url = "https://schalter.asvz.ch/tn/lessons/" + str(lesson_id)
+    safe_page_load(url)
+    evpr = wait_for_element(By.CLASS_NAME, "event-properties")
+    properties = {}
+    it = iter(evpr.text.split("\n"))
+    try:
+        while(True):
+            name = next(it)
+            value = next(it)
+            properties[name] = value
+    except StopIteration: pass;
+    if debug:
+        prompt_print(properties)
+    if show:
+        for k in properties:
+            prompt_print(k," :\t",properties[k])
+    else:
+        return properties
+
 
 def lesson_enroll(lesson_id, enroll, debug=False):
-    global driver
+    properties = lesson_properties()
+    window = None
+    if enroll:
+        window = properties["Anmeldezeitraum"]
+    else:
+        window = properties["Abmeldefrist"]
     url = "https://schalter.asvz.ch/tn/lessons/" + str(lesson_id)
-    driver.get(url)
+    safe_page_load(url)
     try:
-        if driver.current_url != url:
-            driver.get(url)
         try:
-            button = wait_for_element(By.ID, "btnRegister")
+            button = wait_for_clickable(By.ID, "btnRegister")
             if button.text == "FÜR LEKTION EINSCHREIBEN" and enroll:
-                # if disabled create a listener that inscribes later
-                if "disabled" in button.get_attribute("class").split():
-                    prop = driver.find_element_by_class_name(
-                        "event-properties"
-                    ).text.split("\n")
-                    throwaway = iter(prop)
-                    # TODO: implement room
-                    while next(throwaway) != "Anmeldezeitraum":
-                        pass
-                    inscribe_window = next(throwaway)
-                    prompt_print("window closed", lesson_id, inscribe_window[:20])
-                    # TODO: raise error
-                else:
-                    # directly click at button
-                    button.click()
+                button.click()
             elif button.text == "FÜR LEKTION EINSCHREIBEN" and not enroll:
                 prompt_print("You are not enrolled. Use `list` command.")
             elif button.text == "EINSCHREIBUNG FÜR LEKTION ENTFERNEN" and enroll:
@@ -214,6 +218,7 @@ def lesson_enroll(lesson_id, enroll, debug=False):
             except TimeoutException:
                 pass
     except TimeoutException:
+        global driver
         prompt_print("credentials not cached - retry enrollment again after login")
         button = wait_for_element(By.XPATH, '//button[@title="Login"]', timeout=2)
         button.click()
@@ -246,9 +251,9 @@ def lesson_enroll(lesson_id, enroll, debug=False):
                 options = Options().headless = True
                 driver = webdriver.Chrome(options=options)
             # This is strange but has to bee done (so click login again).
-            lesson_enroll(
-                lesson_id, enroll
-            )  # TODO: recursion might be dangerous (!) maybee find a better syntax
+            # TODO: recursion might be dangerous (!) maybee find a better 
+            # syntax
+            lesson_enroll( lesson_id, enroll, debug=debug)  
 
 
 class Task:
