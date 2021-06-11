@@ -9,52 +9,66 @@
 !_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
 !_TAG_PROGRAM_URL	https://ctags.io/	/official site/
 !_TAG_PROGRAM_VERSION	5.9.0	/p5.9.20210110.0/
-EC	main.py	/^from selenium.webdriver.support import expected_conditions as EC$/;"	x	nameref:unknown:expected_conditions
-Lesson	main.py	/^class Lesson:$/;"	c
-__repr__	main.py	/^    def __repr__(self):$/;"	m	class:Lesson
-arg	main.py	/^                arg = args[i].lower() #be case insensitive$/;"	v
-args	main.py	/^            i = 0; corrected = False; args = command[1:]; correction = 'query '$/;"	v
+EC	task.py	/^from selenium.webdriver.support import expected_conditions as EC$/;"	x	nameref:unknown:expected_conditions
+Lesson	lesson.py	/^class Lesson:$/;"	c
+QUERYSIZE	task.py	/^QUERYSIZE = 20$/;"	v
+QueryException	main.py	/^class QueryException(Exception):$/;"	c
+Task	task.py	/^class Task:$/;"	c
+__init__	main.py	/^    def __init__(self,debug=False):$/;"	m	class:taskExecuter
+__init__	task.py	/^    def __init__(self, function, args, imediate=False, start = None, stop = None, debug = False)/;"	m	class:Task
+__repr__	lesson.py	/^    def __repr__(self):$/;"	m	class:Lesson
+__str__	main.py	/^    def __str__(self):$/;"	m	class:taskExecuter
+arg	main.py	/^                arg = args[i-1].lower()  # be case insensitive$/;"	v
+args	main.py	/^            args = command[1:]$/;"	v
 b	main.py	/^                        b = ratio(k, arg)$/;"	v
-best	main.py	/^                            key = k; best = b; corrected = True; $/;"	v
-best	main.py	/^                    best = 0; key = arg;$/;"	v
-command	main.py	/^        command = sys.argv[1:]$/;"	v
+best	main.py	/^                            best = b$/;"	v
+best	main.py	/^                    best = 0$/;"	v
 command	main.py	/^    command = None$/;"	v
-corrected	main.py	/^                            key = k; best = b; corrected = True; $/;"	v
-corrected	main.py	/^            i = 0; corrected = False; args = command[1:]; correction = 'query '$/;"	v
-correction	main.py	/^            i = 0; corrected = False; args = command[1:]; correction = 'query '$/;"	v
-create_listener	main.py	/^def create_listener(lesson_id,window):$/;"	f
-day	main.py	/^    weekday = None; day = None ; month = None$/;"	v	class:Lesson
+corrected	main.py	/^                            corrected = True$/;"	v
+corrected	main.py	/^            corrected = False$/;"	v
+correction	main.py	/^            correction = "query "$/;"	v
+day	lesson.py	/^    day = None$/;"	v	class:Lesson
 debug	main.py	/^debug = True$/;"	v
-driver	main.py	/^    driver = webdriver.Chrome(options=options) #uses chromedriver per default$/;"	v
-end	main.py	/^    start = None; end = None$/;"	v	class:Lesson
-facilities	main.py	/^facilities = {$/;"	v
-facility	main.py	/^    sport = None; niveau = None; facility = None; trainer = None$/;"	v	class:Lesson
-headless	main.py	/^headless = False #TODO = not debug # in the release$/;"	v
-i	main.py	/^            i = 0; corrected = False; args = command[1:]; correction = 'query '$/;"	v
-interacive	main.py	/^        interacive = False$/;"	v
-interactive	main.py	/^    interactive = True$/;"	v
-key	main.py	/^                            key = k; best = b; corrected = True; $/;"	v
-key	main.py	/^                    best = 0; key = arg;$/;"	v
-keywords	main.py	/^keywords = dict()$/;"	v
-lesson_enroll	main.py	/^def lesson_enroll(lesson_id,enroll):$/;"	f
-lesson_id	main.py	/^    url = None; lesson_id = None$/;"	v	class:Lesson
-month	main.py	/^    weekday = None; day = None ; month = None$/;"	v	class:Lesson
-niveau	main.py	/^    sport = None; niveau = None; facility = None; trainer = None$/;"	v	class:Lesson
-nofitness	main.py	/^nofitness = "&without_fitness=1"$/;"	v
-options	main.py	/^options = Options()$/;"	v
+driver	main.py	/^    driver = webdriver.Chrome(options=options)  # uses chromedriver per default$/;"	v
+driver	task.py	/^driver = None$/;"	v
+end	lesson.py	/^    end = None$/;"	v	class:Lesson
+enrollment_string	lesson.py	/^    enrollment_string = None$/;"	v	class:Lesson
+esc	task.py	/^def esc(code):$/;"	f
+exec	task.py	/^    def exec(self):$/;"	m	class:Task
+executer	main.py	/^    executer = taskExecuter(debug=debug)$/;"	v
+facilities	lesson.py	/^facilities = {$/;"	v
+facility	lesson.py	/^    facility = None$/;"	v	class:Lesson
+headless	main.py	/^headless = False$/;"	v
+i	main.py	/^            i = 0$/;"	v
+key	main.py	/^                            key = k$/;"	v
+key	main.py	/^                    key = None$/;"	v
+keywords	lesson.py	/^keywords = dict()$/;"	v
+lesson_enroll	task.py	/^def lesson_enroll(lesson_id, enroll, debug=False):$/;"	f
+lesson_id	lesson.py	/^    lesson_id = None$/;"	v	class:Lesson
+lock	main.py	/^lock = threading.Lock()$/;"	v
+month	lesson.py	/^    month = None$/;"	v	class:Lesson
+niveau	lesson.py	/^    niveau = None$/;"	v	class:Lesson
+nofitness	lesson.py	/^nofitness = "without_fitness=1"$/;"	v
+options	main.py	/^options = webdriver.chrome.options.Options()$/;"	v
 print_help	main.py	/^def print_help():$/;"	f
-query_inscribed	main.py	/^def query_inscribed():$/;"	f
-query_trainings	main.py	/^def query_trainings(url):$/;"	f
-quit_asvz	main.py	/^def quit_asvz():$/;"	f
-sport	main.py	/^    sport = None; niveau = None; facility = None; trainer = None$/;"	v	class:Lesson
-sports	main.py	/^sports = {$/;"	v
-start	main.py	/^    start = None; end = None$/;"	v	class:Lesson
-trainer	main.py	/^    sport = None; niveau = None; facility = None; trainer = None$/;"	v	class:Lesson
-trainings	main.py	/^            trainings = query_trainings(url)$/;"	v
+prompt_print	task.py	/^def prompt_print(*args):$/;"	f
+query_inscribed	task.py	/^def query_inscribed(debug=False):$/;"	f
+query_trainings	task.py	/^def query_trainings(url, debug=False):$/;"	f
+quit_asvz	main.py	/^def quit_asvz(executer):$/;"	f
+run	main.py	/^    def run(self):$/;"	m	class:taskExecuter
+safe_page_load	task.py	/^def safe_page_load(url):$/;"	f
+set_driver	task.py	/^def set_driver(dr):$/;"	f
+sport	lesson.py	/^    sport = None$/;"	v	class:Lesson
+sports	lesson.py	/^sports = {$/;"	v
+start	lesson.py	/^    start = None$/;"	v	class:Lesson
+t	main.py	/^            t = Task(query_inscribed, [], imediate=True)$/;"	v
+taskExecuter	main.py	/^class taskExecuter(threading.Thread):$/;"	c
+tasks	main.py	/^tasks = []$/;"	v
+trainer	lesson.py	/^    trainer = None$/;"	v	class:Lesson
+url	lesson.py	/^    url = None$/;"	v	class:Lesson
 url	main.py	/^            url = "https:\/\/asvz.ch\/426-sportfahrplan?"$/;"	v
-url	main.py	/^    url = None; lesson_id = None$/;"	v	class:Lesson
-wait_for_clickable	main.py	/^def wait_for_clickable(attribute,string,timeout=15):$/;"	f
-wait_for_element	main.py	/^def wait_for_element(attribute,string,multiple=False,timeout=15):$/;"	f
-wait_for_elements	main.py	/^def wait_for_elements(attribute,string,timeout=15):$/;"	f
-weekday	main.py	/^    weekday = None; day = None ; month = None$/;"	v	class:Lesson
-weekdays	main.py	/^weekdays = {$/;"	v
+wait_for_clickable	task.py	/^def wait_for_clickable(attribute, string, timeout=15):$/;"	f
+wait_for_element	task.py	/^def wait_for_element(attribute, string, multiple=False, timeout=15, debug=False):$/;"	f
+wait_for_elements	task.py	/^def wait_for_elements(attribute, string, timeout=15):$/;"	f
+weekday	lesson.py	/^    weekday = None$/;"	v	class:Lesson
+weekdays	lesson.py	/^weekdays = {$/;"	v
