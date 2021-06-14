@@ -1,4 +1,5 @@
 from fuzzywuzzy.fuzz import ratio
+from debug import *
 
 
 class QueryException(Exception):
@@ -14,6 +15,7 @@ sports = {
     "mpump": "sport:45686",
     "crossfit": "sport:45643",
     "relax": "sport:245229",
+    "jazz": "sport:45664"
 }
 weekdays = {
     "mon": "weekday:3999",
@@ -23,6 +25,13 @@ weekdays = {
     "fri": "weekday:4008",
     "sat": "weekday:4003",
     "son": "weekday:4000",
+    "mo": "weekday:3999",
+    "di": "weekday:4006",
+    "mi": "weekday:4007",
+    "do": "weekday:4002",
+    "fr": "weekday:4008",
+    "sa": "weekday:4003",
+    "so": "weekday:4000",
 }
 facilities = {
     "irchel": "facility:45577",
@@ -109,6 +118,8 @@ def match_keywords(args):
     for arg in args:
         # be case insensitive
         arg = arg.lower()
+        if arg == '':
+            continue
         # fuzzy match argument and correct to known key
         if arg not in keywords:
             best = 0
@@ -141,8 +152,8 @@ def match_keywords(args):
 # Basially this is a helper function mangeling the website content
 # in its strage format to a lesson object with trainer, date, ...
 # Most of this is reverse engineering - if you are required to understand this
-# run a query with debug=True to show the split list for each lesson.
-def from_split(l, split, debug=False):
+# run a query with DEBUG=True to show the split list for each lesson.
+def from_split(l, split):
     l.start = split[0]
     l.end = split[1][-5:]
     l.sport = split[2]

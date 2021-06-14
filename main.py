@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys, os
-from time import sleep, localtime, time, mktime, strptime
+#from time import sleep, localtime, time, mktime, strptime
 import threading
 
 from selenium import webdriver
@@ -10,15 +10,15 @@ from selenium.common.exceptions import (
     InvalidArgumentException,
     TimeoutException,
 )
+from time import sleep, localtime, time, mktime, strptime, strftime,struct_time
 import task, lesson
 from task import *
 from lesson import Lesson, keywords, QueryException
+from debug import *
 
 # definitions and settings
-debug = True
-if debug:
+if DEBUG:
     import timeit
-headless = False
 
 # setup browser driver (namely chromiumdriver)
 options = webdriver.chrome.options.Options()
@@ -41,33 +41,7 @@ except InvalidArgumentException as ex:
 
 
 def print_help():
-    print(
-        '\
-        This asvz helper can be run interactively or not.\n\
-        In interactive mode one can type commands repeatedly and crossreference\n\
-        for example querys easily.\n\
-        In noninteractive mode one gives the command as a command line argument.\n\
-\n\
-        Note that this tool heavily relies on browser cahce for password storage.\n\
-        Therefor the first time one is required to login in ASVZ manually. Further logins\n\
-        are done by this application by itself with coockies. NOTE however from time\n\
-        to time these get invalid and one is simply not allowed to enroll anymore\n\
-        due to "missing membership". Then simply log out and in again manually.\n\
-        This is maybee a bit tedious but does not require saving ETHZ credentials.\n\
-\n\
-        available commands:\n\
-        ===================\n\
-        help                    prints this help message\n\
-        list                    \n\
-        query KEYWORDS          searches for trainings according to keywords\n\
-        dict                    prints a dictionary of available KEYWORDS to query for.\n\
-        enroll LESSON           enrolls for a lesson given its lesson id\n\
-        deroll LESSON           removes subscription from lesson\n\
-        props LESSON            print properties of a Lesson\n\
-        q | q | ^D | ^C         quits interaction\
-    '
-    )
-
+    print(HELP_STRING)
 
 # FIFO queue for imediate task, but all candidates with an execution window take preference and are executed as soon as possible
 # We do not botter with higher complexity data structures as we sometimes need
@@ -82,8 +56,7 @@ lock = threading.Lock()
 # --user-dir flag but we wan't to do multiple tasks like enrolling for multiple
 # lessons simultanously
 class taskExecuter(threading.Thread):
-    def __init__(self, debug=False):
-        self.debug = debug
+    def __init__(self):
         self.doStop = False
         super().__init__()
         self.daemon = True
@@ -101,25 +74,33 @@ class taskExecuter(threading.Thread):
                 sleep(1)
                 continue
             else:
-                lock.acquire()
+                now = localtime()
                 candidate = None
-                it = iter(tasks)
-                while candidate is None:
-                    i = next(it)
+                lock.acquire()
+                for i in tasks:
+                    if candidate is not None:
+                        break
                     if not i.imediate:
-                        # can we execute task within the next 7s?
-                        if time() > i.start - 7:
+                        # can we execute task within the next 10s?
+                        if time() > i.start - 10:
                             candidate = i
                     elif candidate is None:
                         candidate = i
-                # mainly the next line is protected by the lock
-                # this as the driver allows only one instance
-                try:
-                    candidate.exec()
-                except FollowUpTaskException as ftask:
-                    tasks.append(ftask.task)
-                tasks.remove(candidate)
-                lock.release()
+                if candidate is None:
+                    lock.release()
+                    sleep(1)
+                else:
+                    try:
+                        if DEBUG:
+                            prompt_debug_print(f"Debug: executing task: {candidate.function}")
+                        candidate.exec()
+                    except FollowUpTaskException as ftask:
+                        if DEBUG:
+                            prompt_debug_print(f"Debug: adding follow up: {ftask.task.function}")
+                        tasks.append(ftask.task)
+                    finally:
+                        tasks.remove(candidate)
+                        lock.release()
 
 def quit_asvz(executer):
     # only quit if no tasks are running
@@ -136,28 +117,48 @@ def quit_asvz(executer):
 
 
 if __name__ == "__main__":
-    executer = taskExecuter(debug=debug)
+    executer = taskExecuter()
     executer.start()
     command = None
     while True:
         try:
-            command = input(esc("2D") + "> ").split(" ")
+            command = [x.strip() for x in input(esc("2D") + "> ").split(" ")]
+            for i in command:
+                i.strip()
         except EOFError:
             print("^D", end="")
             quit_asvz(executer)
             break
         except KeyboardInterrupt:
             # hard exit
-            qrint("Keybord Interrupt: aborting all future tasks")
+            print("Keybord Interrupt.")
+            if len(tasks) > 0:
+                print("interrupting tasks:")
+                for t in tasks:
+                    print(f"\t{str(tasks)}")
             break
         if command[0] in ["prop","props","properties"]:
-            t = Task(lesson_properties,['command[1]','show=True','debug=debug'],imediate=True,debug=debug)
-            #TODO: fix debug thing - passing it is anoying as hell
-        elif command[0] == "list":
-            t = Task(query_inscribed, [], imediate=True, debug=debug)
+            l = command[1]
+            if len(l) != 6 or not l.isdecimal():
+                prompt_print(f"Error: provided lesson {l} is not  a 6 digit number")
+                continue
+            if DEBUG:
+                print(lesson_properties,[l,'show=True'])
+            t = Task(lesson_properties,[l,'show=True'],imediate=True)
             lock.acquire()
             tasks.append(t)
             lock.release()
+        elif command[0] == "list":
+            t = Task(query_inscribed, [], imediate=True)
+            lock.acquire()
+            tasks.append(t)
+            lock.release()
+        elif command[0] == "dict":
+            lesson.keyword_show()
+            print(
+                "Or consider contributing to https://github.com/andrino-meli/asvz in case your keyword is not yet available. (It's really easy)."
+            )
+            # TODO: insert github contribute url
         elif command[0] == "query":
             # calculate url given the arguments and using the keyword dict.
             try:
@@ -165,31 +166,56 @@ if __name__ == "__main__":
                 (url, corrected, correction) = lesson.match_keywords(args)
                 if corrected:
                     print(correction)
-                if debug:
-                    print(url)
-                query_trainings(url, debug=debug)
+                query_trainings(url)
             except QueryException as er:
-                print(
-                    er,
-                    "Use `dict` to display available keywords.",
-                )
-        elif command[0] == "dict":
-            lesson.keyword_show()
-            print(
-                "Or consider contributing to https://github.com/andrino-meli/asvz in case your keyword is not yet available. (It's really easy)."
-            )
-            # TODO: insert github contribute url
+                print( er, "Use `dict` to display available keywords.",)
+        elif command[0] in ['tasks','task']:
+            lock.acquire()
+            for i in tasks:
+                prompt_print(i)
+            lock.release()
+        elif command[0] == 'cancel':
+            if command[1] == 'all':
+                lock.acquire()
+                tasks = []
+                lock.release()
+            for l in command[1:]:
+                if len(l) != 6 or not l.isdecimal():
+                    prompt_print(f"Error: provided lesson {l} is not  a 6 digit number")
+                    continue
+                lock.acquire()
+                for t in tasks:
+                    if l in t.args: #TODO consider making lesson_id part of a task of making a class Lesson and putting it into a Task
+                        tasks.remove(t)
+                lock.release()
         elif command[0] == "enroll" or command[0] == "deroll":
             for l in command[1:]:
-                try:
-                    if len(l) != 6:
-                        raise ValueError("provided lesson has not 6 digits")
-                    t = Task(lesson_enroll, [l, command[0] == "enroll"], imediate=True,debug=debug)
-                    lock.acquire()
-                    tasks.append(t)
-                    lock.release()
-                except ValueError:
-                    print("Error: provided lesson id is not 6 digits")
+                if len(l) != 6 or not l.isdecimal():
+                    prompt_print(f"Error: provided lesson {l} is not  a 6 digit number")
+                    continue
+                t = Task(lesson_enroll, [l, command[0] == "enroll"], imediate=True)
+                lock.acquire()
+                tasks.append(t)
+                lock.release()
+        elif command[0] == 'sneak':
+            l = command[1]
+            if len(l) != 6 or not l.isdecimal():
+                prompt_print(f"Error: provided lesson {l} is not  a 6 digit number")
+                continue
+            # calculate window
+            start = localtime(time())
+            preptime = command[2]
+            if not preptime.isdecimal():
+                prompt_print(f"Error: provided time horizon is not readable")
+                continue
+            preptime = int(preptime)*60 # preptime from minutes to seconds
+            props = lesson_properties(l)
+            stop = localtime(mktime(props['winclose']) - preptime)
+            t = Task(check_for_free_seat, [l,stop],start=mktime(start),stop=mktime(stop))
+            lock.acquire()
+            tasks.append(t)
+            lock.release()
+
         elif command[0] == "quit" or command[0] == "q":
             quit_asvz(executer)
             break
