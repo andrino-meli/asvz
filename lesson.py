@@ -1,5 +1,10 @@
 from fuzzywuzzy.fuzz import ratio
-from debug import *
+from utility import *
+from time import sleep, time, mktime, strptime, localtime,strftime,struct_time,asctime
+import locale
+
+# set local for time reading
+locale.setlocale(locale.LC_ALL, locale='de_CH.UTF-8')
 
 
 class QueryException(Exception):
@@ -15,8 +20,9 @@ sports = {
     "mpump": "sport:45686",
     "crossfit": "sport:45643",
     "relax": "sport:245229",
-    "jazz": "sport:45664"
+    "jazz": "sport:45664",
 }
+
 weekdays = {
     "mon": "weekday:3999",
     "tue": "weekday:4006",
@@ -50,7 +56,6 @@ keywords.update(weekdays)
 keywords.update(facilities)
 keywords.update(nolist)
 
-
 class Lesson:
     url = None
     lesson_id = None
@@ -64,6 +69,14 @@ class Lesson:
     facility = None
     trainer = None
     enrollment_string = None
+    #    winopen = None
+    #    winclose = None
+    #    derolldue = None
+    #    def __init__(self,lesson_id,**args):
+    #        self.lesson_id = lesson_id
+    #        sel.url = "https://schalter.asvz.ch/tn/lessons/" + lesson_id
+    #        for k,v in args.items():
+    #            self.__dict__[k] = v
 
     def __repr__(self):
         trainer = self.trainer
@@ -83,8 +96,8 @@ class Lesson:
             self.weekday[:2],
             self.day,
             self.month,
-            self.start,
-            self.end,
+            strftime(TIME_FMT,localtime(self.start)),
+            strftime(TIME_FMT,localtime(self.end)),
             self.sport[:13],
             trainer[:16],
             facility[:12],
@@ -118,7 +131,7 @@ def match_keywords(args):
     for arg in args:
         # be case insensitive
         arg = arg.lower()
-        if arg == '':
+        if arg == "":
             continue
         # fuzzy match argument and correct to known key
         if arg not in keywords:
@@ -153,9 +166,16 @@ def match_keywords(args):
 # in its strage format to a lesson object with trainer, date, ...
 # Most of this is reverse engineering - if you are required to understand this
 # run a query with DEBUG=True to show the split list for each lesson.
+#
+# This function could be implemented easier by calling properties but this
+# requires an additional url to be loaded for each lesson we query (slow)
 def from_split(l, split):
-    l.start = split[0]
-    l.end = split[1][-5:]
+    fmt = '%d.%B.%Y %H:%M'
+    year = str(localtime().tm_year)
+    if int(localtime().tm_mon) == 12 and l.month == 'Januar':
+        year += 1 # should fix year when runnign over newyear
+    l.start = mktime(strptime(f'{l.day}.{l.month}.{year} '+split[0],fmt))
+    l.end = mktime(strptime(f'{l.day}.{l.month}.{year} '+split[1][-5:],fmt))
     l.sport = split[2]
     l.niveau = split[3]
     l.facility = split[4]
