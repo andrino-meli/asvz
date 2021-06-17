@@ -1,4 +1,4 @@
-import threading,pyperclip
+import threading,pyperclip, sys
 from selenium import webdriver
 from selenium.common.exceptions import (
     NoSuchElementException,
@@ -13,13 +13,35 @@ from time import sleep, time, mktime, strptime, localtime,strftime,struct_time,a
 import lesson
 from utility import *
 
-# sometimes its inherently impossible to to execute a task modularyly: in this
-# case a task can raise a subtask exception informing the task handler to 
-# schedule a followup task
-
-def set_driver(dr):
+def create_driver(headless=HEADLESS,app=not DEBUG):
     global driver
-    driver = dr
+    options = webdriver.chrome.options.Options()
+    options.add_argument(
+        "--user-data-dir=" + os.path.expanduser("~/.config/chromium")
+    )  # cookie storage
+    if headless:
+        options.add_argument("--headless")
+    if app:
+        options.add_argument("--app")
+    try:
+        debug_print(f'starting chrome with {options}')
+        driver = webdriver.Chrome(options=options)  # uses chromedriver per default
+        driver.implicitly_wait(0)
+        return driver
+    except InvalidArgumentException as ex:
+        if "--user-data-dir" in ex.msg:
+            # driver.close() #TODO: make this work somehow
+            print("Error: Only one instance of asvz can run. Allready running.")
+            sys.exit(114)
+            # maybee use sys.exit() or os.exit()?
+        else:
+            raise ex
+
+def close_driver():
+    driver.close()
+
+# setup browser driver (namely chromiumdriver)
+driver = create_driver()
 
 # helper function to make code more readable
 def wait_for_element(attribute, string, multiple=False, timeout=15):
@@ -53,7 +75,7 @@ def wait_for_clickable(attribute, string, timeout=15):
 
 def safe_page_load(url):
     if DEBUG:
-        debug_print("soft load", url)
+        debug_print("safe load", url)
     if driver.current_url == url:
         tmp = driver.find_element_by_xpath("/html")
         driver.get(url)
@@ -61,8 +83,12 @@ def safe_page_load(url):
     else:
         driver.get(url)
         # TODO: does not work with redirects
-        while (driver.current_url) != url:
+        while driver.current_url != url and LOGIN_URL not in driver.current_url:
             sleep(0.3)
+    if LOGIN_URL in driver.current_url:
+        if DEBUG:
+            warn_print("redirected to login", url)
+        raise LoginRequiredException("Redirected to the login page")
     sleep(0.3)
 
 
@@ -127,7 +153,7 @@ def query_trainings(url):
 
 def query_inscribed():
     url = "https://schalter.asvz.ch/tn/my-lessons"
-    driver.get(url)
+    safe_page_load(url)
     try:
         table = wait_for_element(By.TAG_NAME, "table")
         trainings = table.find_elements_by_tag_name("tr")[1:]
@@ -224,81 +250,73 @@ def check_window(lesson_id,enroll):
         else:
             lesson_enroll(lesson_id,enroll)
 
+def manuall_login(executer):
+    global driver
+    warn_print("LOGIN REQUIRED - opening browser - pls. login manually.")
+    # stop the executer
+    executer.doStop = True
+    close_driver()
+    create_driver(headless=False)
+    driver.get(LOGIN_URL)
+    while driver.current_url != "https://auth.asvz.ch/Manage/Index":
+        sleep(0.5)
+    prompt_print("Manuall Login Successfull!")
+    # strange but we have to relogin to save the cookie
+    #button = driver.find_element_by_xpath('//button[@title="Login"]')
+    #button.click()
+
+    # restart driver
+    close_driver()
+    create_driver()
+    #let main restart the taskExecuter
+    debug_print('deleting the executer')
+    del executer
 
 def lesson_enroll(lesson_id, enroll):
     # TODO: make properties not required multiple times
     # maybee create a lesson object instead of the lesson id
     url = "https://schalter.asvz.ch/tn/lessons/" + str(lesson_id)
-    properties = lesson_properties(lesson_id)
+    properties = lesson_properties(lesson_id) #loads url for us
     if enroll and properties['Freie Plätze'] == '0':
         prompt_print(f'Error: {lesson_id} fully booked. Consider calling `sneak.')
         return
     try:
-        try:
-            button = wait_for_clickable(By.ID, "btnRegister")
-            if button.text == "FÜR LEKTION EINSCHREIBEN" and enroll:
-                button.click()
-            elif button.text == "FÜR LEKTION EINSCHREIBEN" and not enroll:
-                prompt_print("Error: You are not enrolled. Use `list` command.")
-            elif button.text == "EINSCHREIBUNG FÜR LEKTION ENTFERNEN" and enroll:
-                prompt_print("Error: You are allready enrolled. Use `list` command.")
-            elif button.text == "EINSCHREIBUNG FÜR LEKTION ENTFERNEN" and not enroll:
-                button.click()
-                ok = wait_for_clickable(
-                    By.XPATH, "//app-lessons-enrollment-button//button[text()='Ok']"
-                )
-                ok.click()
-        except NoSuchElementException:
-            prompt_print("Error, acction not possible")
-        finally:
-            try:
-                # TODO: find allert with xpath!
-                allert = wait_for_element(By.CLASS_NAME, "alert", timeout=2)
-                allert_msg = ""
-                for i in allert.text.split("\n"):
-                    if i != "x" and i != "Close": # x and Close are button texts in the allert
-                        allert_msg = i
-                prompt_print(allert_msg)
-            except TimeoutException:
-                pass
-    except TimeoutException:
-        global driver
-        prompt_print("credentials not cached - retry enrollment again after login")
-        button = wait_for_element(By.XPATH, '//button[@title="Login"]', timeout=2)
+        button = wait_for_element(By.XPATH, '//button[@title="Login"]', timeout=1)
         button.click()
-        # check if we are redirected to auth.asvz.ch (so no cached credentials)
-        sleep(2)
-        curl = driver.current_url
-        auth_url = "https://auth.asvz.ch/account/login"
-        if curl[: len(auth_url)] == auth_url:
-            prompt_print("LOGIN REQUIRED - opening browser - pls. login manually.")
-            options = webdriver.chrome.options.Options()
-            options.add_argument(
-                "--user-data-dir=" + os.path.expanduser("~/.config/chromium")
-            )  # cookie storage
-            options.add_argument("--app=" + auth_url)
-            # TODO: check and make login easier
-            headless = False  # TODO: remove hardecoded fix
-            if headless:
-                driver.close()
-                driver = webdriver.Chrome(options=options)
-                driver.get(auth_url)
-            while driver.current_url != "https://auth.asvz.ch/Manage/Index":
-                sleep(0.5)
-            # strange but we have to relogin to save the cookie
-            driver.get(url)
-            button = driver.find_element_by_xpath('//button[@title="Login"]')
+        sleep(5) # wait for possible redirect
+        if LOGIN_URL in driver.current_url:
+            warn_print("Cached credentials are not valid anymore. relogin MANUALLY")
+            Task(lesson_enroll,[lesson_id,enroll],imediate=True) # recreate task
+            raise LoginRequiredException()
+    except TimeoutException:
+        debug_print("credentials cached")
+    try:
+        button = wait_for_clickable(By.ID, "btnRegister")
+        if button.text == "FÜR LEKTION EINSCHREIBEN" and enroll:
             button.click()
-            prompt_print("Manuall Login Successfull!")
-            if headless:
-                driver.close()
-                options = Options().headless = True
-                driver = webdriver.Chrome(options=options)
-            # This is strange but has to bee done (so click login again).
-            # TODO: recursion might be dangerous (!) maybee find a better 
-            # syntax
-            lesson_enroll( lesson_id, enroll)  
-
+        elif button.text == "FÜR LEKTION EINSCHREIBEN" and not enroll:
+            prompt_print("Error: You are not enrolled. Use `list` command.")
+        elif button.text == "EINSCHREIBUNG FÜR LEKTION ENTFERNEN" and enroll:
+            prompt_print("Error: You are allready enrolled. Use `list` command.")
+        elif button.text == "EINSCHREIBUNG FÜR LEKTION ENTFERNEN" and not enroll:
+            button.click()
+            ok = wait_for_clickable(
+                By.XPATH, "//app-lessons-enrollment-button//button[text()='Ok']"
+            )
+            ok.click()
+    except NoSuchElementException:
+        prompt_print("Error, acction not possible")
+    finally:
+        try:
+            # TODO: find allert with xpath!
+            allert = wait_for_element(By.CLASS_NAME, "alert", timeout=2)
+            allert_msg = ""
+            for i in allert.text.split("\n"):
+                if i != "x" and i != "Close": # x and Close are button texts in the allert
+                    allert_msg = i
+            prompt_print(allert_msg)
+        except TimeoutException:
+            pass
 
 class Task:
     tasks = {}

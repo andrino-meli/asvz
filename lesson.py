@@ -6,7 +6,6 @@ import locale
 # set local for time reading
 locale.setlocale(locale.LC_ALL, locale='de_CH.UTF-8')
 
-
 class QueryException(Exception):
     pass
 
@@ -105,7 +104,6 @@ class Lesson:
             self.enrollment_string[:15],
         )
 
-
 # TODO add time and date?
 def keyword_show():
     print("sports:\t\t", *list(sports.keys()))
@@ -116,7 +114,6 @@ def keyword_show():
     others.difference_update(set(facilities.keys()))
     others.difference_update(set(weekdays.keys()))
     print("others:\t\t", *list(others))
-
 
 # given a list of keywords (args) match them to the keyword dictionary and
 # build a query url from it and return the url.
@@ -158,7 +155,6 @@ def match_keywords(args):
         corrected,
         correction + "\t If this is not desired consider calling `dict`.",
     )
-
 
 # given a lesson l with date und url allready given
 # add the rest of the information of split to l

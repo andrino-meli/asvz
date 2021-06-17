@@ -9,9 +9,7 @@ QUERY_DEBUG = False
 PROPERTIES_DEBUG = True
 SPLIT_DEBUG = True
 DEBUG = True
-debug = DEBUG  # TODO rename and remove
 HEADLESS = False
-headless = HEADLESS  # TODO ren and rev
 
 POLL_INTERVALL = 30  # sneak polling intervall in s
 # date format in asvz app
@@ -19,6 +17,10 @@ DATE_FMT = "%d.%m.%Y %H:%M"
 # more readable and short format for printings to user
 A_DATE_FMT = "%a %d.%b %H:%M"
 TIME_FMT = "%H:%M"
+LOGIN_URL = 'https://auth.asvz.ch/account/login'
+
+class LoginRequiredException(Exception):
+    pass
 
 # ansi escape sequence
 def esc(code):
@@ -57,6 +59,7 @@ available commands:\n\
 ===================\n\
 {BOLD}q{RESET} | {BOLD}q{RESET} | ^D | ^C         quits interaction\n\
 {BOLD}help{RESET}                    prints this help message\n\
+{BOLD}login{RESET}                   manually login to ASVZ -> chaches cookies for later\n\
 {BOLD}list{RESET}                    shows all enrolled trainings\n\
 {BOLD}query{RESET} KEYWORDS          searches for trainings according to keywords\n\
 {BOLD}dict{RESET}                    prints a dictionary of available KEYWORDS allowd in queries.\n\

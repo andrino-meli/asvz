@@ -15,80 +15,70 @@ CLEAR	utility.py	/^CLEAR = ansi("0")$/;"	v
 DATE_FMT	utility.py	/^DATE_FMT = "%d.%m.%Y %H:%M"$/;"	v
 DEBUG	utility.py	/^DEBUG = True$/;"	v
 EC	task.py	/^from selenium.webdriver.support import expected_conditions as EC$/;"	x	nameref:unknown:expected_conditions
-FollowUpTaskException	task.py	/^class FollowUpTaskException(Exception):$/;"	c
 GREY	utility.py	/^GREY = ansi("38;2;150;150;150")$/;"	v
 HEADLESS	utility.py	/^HEADLESS = False$/;"	v
 HELP_STRING	utility.py	/^HELP_STRING = f'\\$/;"	v
+LOGIN_URL	utility.py	/^LOGIN_URL = 'https:\/\/auth.asvz.ch\/account\/login'$/;"	v
 Lesson	lesson.py	/^class Lesson:$/;"	c
+LoginRequiredException	utility.py	/^class LoginRequiredException(Exception):$/;"	c
 POLL_INTERVALL	utility.py	/^POLL_INTERVALL = 30  # sneak polling intervall in s$/;"	v
-PROPERTIES_DEBUG	utility.py	/^PROPERTIES_DEBUG = False$/;"	v
+PROPERTIES_DEBUG	utility.py	/^PROPERTIES_DEBUG = True$/;"	v
 QUERYSIZE	task.py	/^QUERYSIZE = 20$/;"	v
 QUERY_DEBUG	utility.py	/^QUERY_DEBUG = False$/;"	v
 QueryException	lesson.py	/^class QueryException(Exception):$/;"	c
 RED	utility.py	/^RED = ansi("38;2;255;0;0")$/;"	v
 RESET	utility.py	/^RESET = ansi("0")$/;"	v
+SPLIT_DEBUG	utility.py	/^SPLIT_DEBUG = True$/;"	v
+TIME_FMT	utility.py	/^TIME_FMT = "%H:%M"$/;"	v
 Task	task.py	/^class Task:$/;"	c
+TaskExecuter	main.py	/^class TaskExecuter(threading.Thread):$/;"	c
 YELLOW	utility.py	/^YELLOW = ansi("38;2;255;255;0")$/;"	v
-__del__	task.py	/^    def __del__(self):$/;"	m	class:Task
-__init__	main.py	/^    def __init__(self):$/;"	m	class:taskExecuter
-__init__	task.py	/^    def __init__( self, function, args, imediate=False, start=None, stop=None):$/;"	m	class:Task
-__init__	task.py	/^    def __init__(self,task):$/;"	m	class:FollowUpTaskException
+__init__	main.py	/^    def __init__(self):$/;"	m	class:TaskExecuter
+__init__	task.py	/^    def __init__(self, function, args, imediate=False, start=None, stop=None):$/;"	m	class:Task
 __repr__	lesson.py	/^    def __repr__(self):$/;"	m	class:Lesson
 __repr__	task.py	/^    def __repr__(self):$/;"	m	class:Task
-__str__	main.py	/^    def __str__(self):$/;"	m	class:taskExecuter
+__str__	main.py	/^    def __str__(self):$/;"	m	class:TaskExecuter
 __str__	task.py	/^    def __str__(self):$/;"	m	class:Task
 ansi	utility.py	/^def ansi(code):$/;"	f
 check_for_free_seat	task.py	/^def check_for_free_seat(lesson_id,stop):$/;"	f
 check_window	task.py	/^def check_window(lesson_id,enroll):$/;"	f
 command	main.py	/^    command = None$/;"	v
+create_driver	task.py	/^def create_driver(headless=HEADLESS,app=not DEBUG):$/;"	f
 day	lesson.py	/^    day = None$/;"	v	class:Lesson
-debug	utility.py	/^debug = DEBUG  # TODO rename and remove$/;"	v
 debug_print	utility.py	/^def debug_print(*args):$/;"	f
-driver	main.py	/^driver = None$/;"	v
+driver	task.py	/^driver = create_driver()$/;"	v
 end	lesson.py	/^    end = None$/;"	v	class:Lesson
 enrollment_string	lesson.py	/^    enrollment_string = None$/;"	v	class:Lesson
 esc	utility.py	/^def esc(code):$/;"	f
 execute	task.py	/^    def execute(self):$/;"	m	class:Task
-executer	main.py	/^    executer = taskExecuter()$/;"	v
-executer	main.py	/^executer = None$/;"	v
+executer	main.py	/^    executer = None$/;"	v	class:TaskExecuter
+executer	main.py	/^    executer = TaskExecuter()$/;"	v
 facilities	lesson.py	/^facilities = {$/;"	v
 facility	lesson.py	/^    facility = None$/;"	v	class:Lesson
 from_split	lesson.py	/^def from_split(l, split):$/;"	f
-headless	utility.py	/^headless = HEADLESS  # TODO ren and rev$/;"	v
 keyword_show	lesson.py	/^def keyword_show():$/;"	f
 keywords	lesson.py	/^keywords = dict()$/;"	v
-l	main.py	/^            l = command[1]$/;"	v
 lesson_enroll	task.py	/^def lesson_enroll(lesson_id, enroll):$/;"	f
 lesson_id	lesson.py	/^    lesson_id = None$/;"	v	class:Lesson
-lesson_properties	task.py	/^def lesson_properties(lesson_id,show=False):$/;"	f
+lesson_properties	task.py	/^def lesson_properties(lesson_id,show=False,copy=False):$/;"	f
 lock	task.py	/^    lock = threading.Lock()$/;"	v	class:Task
+main	main.py	/^def main():$/;"	f
+manuall_login	task.py	/^def manuall_login(executer):$/;"	f
 match_keywords	lesson.py	/^def match_keywords(args):$/;"	f
 month	lesson.py	/^    month = None$/;"	v	class:Lesson
 niveau	lesson.py	/^    niveau = None$/;"	v	class:Lesson
 nolist	lesson.py	/^nolist = {"nofitness": "without_fitness=1"}$/;"	v
-options	main.py	/^options = webdriver.chrome.options.Options()$/;"	v
-preptime	main.py	/^            preptime = command[2]$/;"	v
-preptime	main.py	/^            preptime = int(preptime) * 60  # preptime from minutes to seconds$/;"	v
 prompt_print	utility.py	/^def prompt_print(*args):$/;"	f
-props	main.py	/^            props = lesson_properties(l)$/;"	v
 query_inscribed	task.py	/^def query_inscribed():$/;"	f
 query_trainings	task.py	/^def query_trainings(url):$/;"	f
-quit_asvz	main.py	/^def quit_asvz(executer):$/;"	f
-run	main.py	/^    def run(self):$/;"	m	class:taskExecuter
+quit_asvz	task.py	/^def quit_asvz(executer):$/;"	f
+run	main.py	/^    def run(self):$/;"	m	class:TaskExecuter
 safe_page_load	task.py	/^def safe_page_load(url):$/;"	f
-set_driver	task.py	/^def set_driver(dr):$/;"	f
 sport	lesson.py	/^    sport = None$/;"	v	class:Lesson
 sports	lesson.py	/^sports = {$/;"	v
 start	lesson.py	/^    start = None$/;"	v	class:Lesson
-start	main.py	/^            start = time()$/;"	v
-stop	main.py	/^            stop = props["winclose"] - preptime$/;"	v
-t	main.py	/^                t = Task(check_window, [l, command[0] == "enroll"], imediate=True)$/;"	v
-t	main.py	/^                t = Task(query_trainings, [url], imediate=True)$/;"	v
-t	main.py	/^            t = Task(check_for_free_seat, [l, stop], start=start, stop=stop)$/;"	v
-t	main.py	/^            t = Task(lesson_properties, [l, "show=True"], imediate=True)$/;"	v
-t	main.py	/^            t = Task(query_inscribed, [], imediate=True)$/;"	v
-taskExecuter	main.py	/^class taskExecuter(threading.Thread):$/;"	c
-tasks	task.py	/^    tasks = []$/;"	v	class:Task
+taskid	task.py	/^    taskid = 0$/;"	v	class:Task
+tasks	task.py	/^    tasks = {}$/;"	v	class:Task
 trainer	lesson.py	/^    trainer = None$/;"	v	class:Lesson
 url	lesson.py	/^    url = None$/;"	v	class:Lesson
 wait_for_clickable	task.py	/^def wait_for_clickable(attribute, string, timeout=15):$/;"	f
