@@ -1,4 +1,4 @@
-import threading,pyperclip, sys
+import threading, pyperclip, sys
 from selenium import webdriver
 from selenium.common.exceptions import (
     NoSuchElementException,
@@ -8,12 +8,22 @@ from selenium.common.exceptions import (
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from time import sleep, time, mktime, strptime, localtime,strftime,struct_time,asctime
+from time import (
+    sleep,
+    time,
+    mktime,
+    strptime,
+    localtime,
+    strftime,
+    struct_time,
+    asctime,
+)
 
 import lesson
 from utility import *
 
-def create_driver(headless=HEADLESS,app=not DEBUG):
+
+def create_driver(headless=HEADLESS, app=not DEBUG):
     global driver
     options = webdriver.chrome.options.Options()
     options.add_argument(
@@ -24,7 +34,7 @@ def create_driver(headless=HEADLESS,app=not DEBUG):
     if app:
         options.add_argument("--app")
     try:
-        debug_print(f'starting chrome with {options}')
+        debug_print(f"starting chrome with {options}")
         driver = webdriver.Chrome(options=options)  # uses chromedriver per default
         driver.implicitly_wait(0)
         return driver
@@ -37,8 +47,10 @@ def create_driver(headless=HEADLESS,app=not DEBUG):
         else:
             raise ex
 
+
 def close_driver():
     driver.close()
+
 
 # setup browser driver (namely chromiumdriver)
 driver = create_driver()
@@ -64,14 +76,17 @@ def wait_for_element(attribute, string, multiple=False, timeout=15):
         )
     return element
 
+
 def wait_for_elements(attribute, string, timeout=15):
     return wait_for_element(attribute, string, multiple=True, timeout=timeout)
+
 
 def wait_for_clickable(attribute, string, timeout=15):
     button = WebDriverWait(driver, timeout).until(
         EC.element_to_be_clickable((attribute, string))
     )
     return button
+
 
 def safe_page_load(url):
     if DEBUG:
@@ -151,6 +166,7 @@ def query_trainings(url):
         if str(er) != "query limit":
             raise er
 
+
 def query_inscribed():
     url = "https://schalter.asvz.ch/tn/my-lessons"
     safe_page_load(url)
@@ -168,49 +184,62 @@ def query_inscribed():
     except TimeoutException:
         prompt_print("Error: page not loaded")
 
-def lesson_properties(lesson_id,show=False,copy=False):
+def lesson_properties(lesson_id, show=False, copy=False):
     url = "https://schalter.asvz.ch/tn/lessons/" + lesson_id
     safe_page_load(url)
-    evpr = wait_for_element(By.CLASS_NAME, "event-properties")
+    # parse EVentPRoperties
+    evpr = wait_for_element(By.TAG_NAME, "app-lesson-properties-display")
+    evpr = evpr.find_elements_by_tag_name("dl")
     properties = {}
-    it = iter(evpr.text.split("\n"))
-    try:
-        while(True):
-            name = next(it)
-            value = next(it)
-            if name == 'Anmeldezeitraum':
-                (winopen,winclose) = value.split(' - ')
-                properties['winopen'] = mktime(strptime(winopen[4:],DATE_FMT))
-                properties['winclose'] = mktime(strptime(winclose[4:],DATE_FMT))
-            elif name == 'Abmeldefrist':
-                properties['derolldue'] = mktime(strptime(value,DATE_FMT))
-            else:
-                properties[name] = value
-    except StopIteration: pass;
+    for p in evpr:
+        name = p.find_element_by_tag_name("dt").text
+        value = [x.text for x in p.find_elements_by_tag_name("dd")]
+        if len(value) == 1: # if only one element move out of list
+            value = value[0]
+        if name == "Anmeldezeitraum":
+            (winopen, winclose) = value.split(" - ")
+            properties["winopen"] = mktime(strptime(winopen[4:], DATE_FMT))
+            properties["winclose"] = mktime(strptime(winclose[4:], DATE_FMT))
+        elif name == "Abmeldefrist":
+            properties["derolldue"] = mktime(strptime(value, DATE_FMT))
+        else:
+            properties[name] = value
+            
+    # debug print
     if PROPERTIES_DEBUG:
         debug_print(properties)
-    string = url +'\n'
-    for k,v in properties.items():
-        if k in ['Versicherung','Unterrichtssprache','Nummer']:
-            pass
-        elif k in ['winopen','winclose','derolldue']:
-            v = strftime(A_DATE_FMT,localtime(v))
-            string += '{:<20}:\t {}\n'.format(k,v)
-        else:
-            string += '{:<20}:\t {}\n'.format(k,v)
-    if copy:
-        pyperclip.copy(string)
-        prompt_print("copied propertie of lesson to clipboard")
-    elif show:
-        prompt_print(string)
-    else:
+
+    # generate a string representation of the properties for printing
+    # or for copy to clipboard
+    if show or copy:
+        string = url + "\n"
+        for k, v in properties.items():
+            if k in [
+                "Versicherung",
+                "Unterrichtssprache",
+                "Nummer",
+            ]:
+                pass
+            elif k in ["winopen", "winclose", "derolldue"]:
+                v = strftime(A_DATE_FMT, localtime(v))
+                string += "{:<20}:    {}\n".format(k, v)
+            else:
+                string += "{:<20}:    {}\n".format(k, v)
+        if copy:
+            pyperclip.copy(string)
+            prompt_print("copied propertie of lesson to clipboard")
+        if show:
+            prompt_print(string)
+
+    # return dictionary
+    if not show and not copy:
         return properties
 
 
-def check_for_free_seat(lesson_id,stop):
+def check_for_free_seat(lesson_id, stop):
     if DEBUG:
         debug_print(f"check for free seat in {lesson_id} stop at {localtime(stop)}.")
-    seats = lesson_properties(lesson_id)['Freie Plätze']
+    seats = lesson_properties(lesson_id)["Freie Plätze"]
     if seats.isdecimal():
         if time() > stop:
             return
@@ -219,8 +248,8 @@ def check_for_free_seat(lesson_id,stop):
             if DEBUG:
                 debug_print(f"adding follow up: {t.function}")
         else:
-            start = time()+POLL_INTERVALL
-            t = Task(check_for_free_seat, [lesson_id, stop], start=start,stop=stop)
+            start = time() + POLL_INTERVALL
+            t = Task(check_for_free_seat, [lesson_id, stop], start=start, stop=stop)
             if DEBUG:
                 debug_print(f"adding follow up: {t.function}")
 
@@ -228,27 +257,34 @@ def check_for_free_seat(lesson_id,stop):
         raise Exception('Error, "Freie Plätze" is not a number.')
 
 
-def check_window(lesson_id,enroll):
+def check_window(lesson_id, enroll):
     properties = lesson_properties(lesson_id)
     # check weather the task can be executed immediately
     if enroll:
-        (winopen,winclose) = (properties['winopen'],properties['winclose'])
-        #TODO: add padding for time checking?
+        (winopen, winclose) = (properties["winopen"], properties["winclose"])
+        # TODO: add padding for time checking?
         if time() < winopen:
             # request creation of a task but with a window instead of imediate
-            Task(lesson_enroll,[lesson_id,'enroll=True'],start=winopen,stop=winclose)
-            warn_print(f'enrollment window not open, created background task for {RESET}{BOLD}{lesson_id}{RESET}{YELLOW}. Consider calling `task` or `cancel`.{RESET}')
-        elif  winclose < time():
-            prompt_print('Eror: enrollment window for {lesson_id} allready closed.')
+            Task(
+                lesson_enroll, [lesson_id, "enroll=True"], start=winopen, stop=winclose
+            )
+            warn_print(
+                f"enrollment window not open, created background task for {RESET}{BOLD}{lesson_id}{RESET}{YELLOW}. Consider calling `task` or `cancel`.{RESET}"
+            )
+        elif winclose < time():
+            prompt_print("Eror: enrollment window for {lesson_id} allready closed.")
         else:
-            lesson_enroll(lesson_id,enroll)
+            lesson_enroll(lesson_id, enroll)
     else:
-        if properties['derolldue'] < time():
-            prompt_print(f"Eror: to late to deroll from {lesson_id}. Risk \
+        if properties["derolldue"] < time():
+            prompt_print(
+                f"Eror: to late to deroll from {lesson_id}. Risk \
             evaluation: currently {properties['Freie Plätze']} seats are free \
-            and {properties['Trainingsleitende']} is your trainer.")
+            and {properties['Trainingsleitende']} is your trainer."
+            )
         else:
-            lesson_enroll(lesson_id,enroll)
+            lesson_enroll(lesson_id, enroll)
+
 
 def manuall_login(executer):
     global driver
@@ -257,36 +293,38 @@ def manuall_login(executer):
     executer.doStop = True
     close_driver()
     create_driver(headless=False)
+    # login
     driver.get(LOGIN_URL)
     while driver.current_url != "https://auth.asvz.ch/Manage/Index":
         sleep(0.5)
     prompt_print("Manuall Login Successfull!")
     # strange but we have to relogin to save the cookie
-    #button = driver.find_element_by_xpath('//button[@title="Login"]')
-    #button.click()
+    # button = driver.find_element_by_xpath('//button[@title="Login"]')
+    # button.click()
 
     # restart driver
     close_driver()
     create_driver()
-    #let main restart the taskExecuter
-    debug_print('deleting the executer')
+    # let main restart the taskExecuter
+    debug_print("deleting the executer")
     del executer
+
 
 def lesson_enroll(lesson_id, enroll):
     # TODO: make properties not required multiple times
     # maybee create a lesson object instead of the lesson id
     url = "https://schalter.asvz.ch/tn/lessons/" + str(lesson_id)
-    properties = lesson_properties(lesson_id) #loads url for us
-    if enroll and properties['Freie Plätze'] == '0':
-        prompt_print(f'Error: {lesson_id} fully booked. Consider calling `sneak.')
+    properties = lesson_properties(lesson_id)  # loads url for us
+    if enroll and properties["Freie Plätze"] == "0":
+        prompt_print(f"Error: {lesson_id} fully booked. Consider calling `sneak.")
         return
     try:
         button = wait_for_element(By.XPATH, '//button[@title="Login"]', timeout=10)
         button.click()
-        sleep(5) # wait for possible redirect
+        sleep(5)  # wait for possible redirect
         if LOGIN_URL in driver.current_url:
             warn_print("Cached credentials are not valid anymore. relogin MANUALLY")
-            Task(lesson_enroll,[lesson_id,enroll],imediate=True) # recreate task
+            Task(lesson_enroll, [lesson_id, enroll], imediate=True)  # recreate task
             raise LoginRequiredException()
     except TimeoutException:
         debug_print("credentials cached")
@@ -312,24 +350,32 @@ def lesson_enroll(lesson_id, enroll):
             allert = wait_for_element(By.CLASS_NAME, "alert", timeout=2)
             allert_msg = ""
             for i in allert.text.split("\n"):
-                if i != "x" and i != "Close": # x and Close are button texts in the allert
+                if (
+                    i != "x" and i != "Close"
+                ):  # x and Close are button texts in the allert
                     allert_msg = i
             prompt_print(allert_msg)
         except TimeoutException:
             pass
+
 
 class Task:
     tasks = {}
     lock = threading.Lock()
     taskid = 0
 
-    #Note one must lock the thread before entering init
-    def __init__(self, function, args, imediate=False, start=None, stop=None):
+    # Note one must lock the thread before entering init
+    def __init__(self, function, args, kwargs=None,imediate=False, start=None, stop=None):
         if not imediate and start is None:
             raise ValueError("A task must be imediate or have a start time.")
+        if not type(args) is list:
+            raise ValueError("Arguments must be a list.")
+        if kwargs is not None and not type(kwargs) is dict:
+            raise ValueError("Keyword arguments must be a dict.")
         # set others
         self.function = function
         self.args = args
+        self.kwargs = kwargs
         self.imediate = imediate
         self.start = start  # if start/stop is None we later simply ignore it
         self.stop = stop
@@ -341,19 +387,22 @@ class Task:
         # a task shall not have a return value, rather prefere raising an # exception
         # a task is expected to print to stdout
         if DEBUG:
-            debug_print(f"executing task {self.task_id}: {self.function}")
-        self.function(*self.args)
+            debug_print(f"executing task {self.task_id}: {self.function} with arguments {self.args}")
+        if self.kwargs is None:
+            self.function(*self.args)
+        else:
+            self.function(*self.args,**self.kwargs)
 
     def __str__(self):
         return self.__repr__()
 
     def __repr__(self):
-        s = f'{BOLD}{self.task_id}{RESET}\tworking on {self.function.__name__}({str(self.args)[1:-1]})'
+        s = f"{BOLD}{self.task_id}{RESET}\tworking on {self.function.__name__}({str(self.args)[1:-1]})"
         if self.imediate:
-            return s + ' imediatly'
+            return s + " imediatly"
         else:
-            winstart = strftime(A_DATE_FMT,localtime(self.start))
+            winstart = strftime(A_DATE_FMT, localtime(self.start))
             if self.stop is not None:
-                winclose = strftime(A_DATE_FMT,localtime(self.stop))
-                return s + f' in window {winstart} - {winclose}'
-            return s + f' starting at {winstart}'
+                winclose = strftime(A_DATE_FMT, localtime(self.stop))
+                return s + f" in window {winstart} - {winclose}"
+            return s + f" starting at {winstart}"

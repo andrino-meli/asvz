@@ -33,6 +33,7 @@ from task import *
 from utility import *
 from lesson import Lesson, keywords, QueryException
 
+
 def quit_asvz():
     # only quit if no tasks are running
     exiting = True
@@ -47,6 +48,7 @@ def quit_asvz():
         print(f"{BOLD}Happy sporting.{RESET}")
         sys.exit(0)
 
+
 # The basic Idea here is we run a frontend accepting and parsing input from the
 # user and a backend sequentially executing tasks like enrolling or querying.
 # This is necessary as the webdriver only allows one instance with the
@@ -57,7 +59,7 @@ class TaskExecuter(threading.Thread):
 
     def __init__(self):
         if TaskExecuter.executer is None or not TaskExecuter.executer.is_alive():
-            debug_print(f'creating a Task Executer')
+            debug_print(f"creating a Task Executer")
             self.doStop = False
             TaskExecuter.executer = self
             super().__init__()
@@ -66,25 +68,25 @@ class TaskExecuter(threading.Thread):
             raise Exception("Error: TaskExecuter allready running")
 
     def run(self):
-        prompt_print(f'Hi, driver initialized - accepting your command.')
-        self.doStop=False
+        prompt_print(f"Hi, driver initialized - accepting your command.")
+        self.doStop = False
         try:
             while not self.doStop:
-                #continue if no tasks are to be done
+                # continue if no tasks are to be done
                 if len(Task.tasks) == 0:
                     sleep(1)
                     continue
-                # chek for potential task candidate and execute one according 
+                # chek for potential task candidate and execute one according
                 # to # the principle mentioned where `task` is defined
                 now = time()
                 Task.lock.acquire()
                 # remove all spoiled tasks
-                for k,t in Task.tasks.items():
+                for k, t in Task.tasks.items():
                     if t.stop is not None and time() > t.stop:
                         Task.tasks.pop(k)
                 # check for candidate to execute
                 candidate = None
-                for k,t in Task.tasks.items():
+                for k, t in Task.tasks.items():
                     if candidate is not None:
                         break
                     if not t.imediate:
@@ -97,24 +99,39 @@ class TaskExecuter(threading.Thread):
                     Task.lock.release()
                     sleep(1)
                     continue
-                #execute candidate
+                # execute candidate
                 try:
                     t = Task.tasks[candidate]
                     t.execute()
                 except WebDriverException as ex:
                     if "net::ERR_INTERNET_DISCONNECTED" in str(ex):
                         warn_print("no internet connection - retry in 1min")
-                        Task(t.function,t.args,imediate=False,start=time()+60,stop=t.stop)
+                        Task(
+                            t.function,
+                            t.args,
+                            imediate=False,
+                            start=time() + 60,
+                            stop=t.stop,
+                        )
                 except LoginRequiredException:
-                    warn_print(f"Login required during operation {t}{YELLOW}. Trying to restart the task automatically later.")
-                    Task(manuall_login,[TaskExecuter.executer],imediate=True)
-                    Task(t.function,t.args,imediate=False,start=time()+7,stop=t.stop)
+                    warn_print(
+                        f"Login required during operation {t}{YELLOW}. Trying to restart the task automatically later."
+                    )
+                    Task(manuall_login, [TaskExecuter.executer], imediate=True)
+                    Task(
+                        t.function,
+                        t.args,
+                        kwargs=t.kwargs,
+                        imediate=False,
+                        start=time() + 7,
+                        stop=t.stop,
+                    )
                 finally:
                     Task.tasks.pop(candidate)
                     Task.lock.release()
         except Exception as ex:
             print(f"{RED} asvz crashed due to {str(ex)}")
-            #quit_asvz(TaskExecuter.executer)
+            # quit_asvz(TaskExecuter.executer)
             raise ex
 
 
@@ -122,26 +139,25 @@ def main():
     command = [x.strip() for x in input(esc("2D") + "> ").split(" ")]
     for i in command:
         i.strip()
-    if command[0] == 'login':
-        Task(manuall_login,[TaskExecuter.executer],imediate=True)
-    elif command[0] in ["prop", "props", "properties",'copy']:
+    if command[0] == "login":
+        Task(manuall_login, [TaskExecuter.executer], imediate=True)
+    elif command[0] in ["prop", "props", "properties", "copy"]:
         l = command[1]
-        if l is None or l == '':
+        if l is None or l == "":
             pass
         elif len(l) != 6 or not l.isdecimal():
             warn_print(f"provided lesson {l} is not  a 6 digit number")
         elif command[0] == 'copy':
-            Task(lesson_properties, [l, 'show=False','copy=True'], imediate=True)
+            Task(lesson_properties, [l], kwargs={'show':False,'copy':True}, imediate=True)
         else:
-            Task(lesson_properties, [l, "show=True"], imediate=True)
-    elif command[0] == "list":
+            Task(lesson_properties, [l], kwargs={'show':True}, imediate=True)
+    elif command[0] == 'list':
         Task(query_inscribed, [], imediate=True)
-    elif command[0] == "dict":
+    elif command[0] == 'dict':
         lesson.keyword_show()
         print(
             "\nOr consider contributing to https://github.com/andrino-meli/asvz in case your keyword is not yet available. (It's really easy)."
         )
-        # TODO: insert github contribute url
     elif command[0] == "query":
         # calculate url given the arguments and using the keyword dict.
         try:
@@ -200,13 +216,14 @@ def main():
     else:
         print(HELP_STRING)
 
+
 if __name__ == "__main__":
-    #TODO: check login
+    # TODO: check login
     TaskExecuter().start()
     command = None
     while True:
         # check if we are required to restart the TaskExecuter
-        debug_print(f'TE is {TaskExecuter.executer}')
+        debug_print(f"TE is {TaskExecuter.executer}")
         if not TaskExecuter.executer.is_alive():
             TaskExecuter().start()
         try:

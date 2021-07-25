@@ -20,9 +20,10 @@ sports = {
     "crossfit": "sport:45643",
     "relax": "sport:245229",
     "jazz": "sport:45664",
+    "unihockey": "sport:45742",
 }
 
-weekdays = {
+time = {
     "mon": "weekday:3999",
     "tue": "weekday:4006",
     "wed": "weekday:4007",
@@ -37,6 +38,9 @@ weekdays = {
     "fr": "weekday:4008",
     "sa": "weekday:4003",
     "so": "weekday:4000",
+    "morning": "period:4005",
+    "afternoon": "period:4004",
+    "evening": "period:4001",
 }
 facilities = {
     "irchel": "facility:45577",
@@ -61,7 +65,7 @@ niveaus = {#DODO allow cap
 nolist = {"nofitness": "without_fitness=1"}
 keywords = dict()
 keywords.update(sports)
-keywords.update(weekdays)
+keywords.update(time)
 keywords.update(facilities)
 keywords.update(niveaus)
 keywords.update(nolist)
@@ -119,12 +123,12 @@ class Lesson:
 def keyword_show():
     print("sports:\t\t", *list(sports.keys()))
     print("facilities:\t", *list(facilities.keys()))
-    print("weekdays:\t", *list(weekdays.keys()))
+    print("time:\t", *list(time.keys()))
     print("niveaus:\t", *list(niveaus.keys()))
     others = set(keywords.keys())
     others.difference_update(set(sports.keys()))
     others.difference_update(set(facilities.keys()))
-    others.difference_update(set(weekdays.keys()))
+    others.difference_update(set(time.keys()))
     others.difference_update(set(niveaus.keys()))
     print("others:\t\t", *list(others))
 
