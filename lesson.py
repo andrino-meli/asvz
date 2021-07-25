@@ -46,6 +46,16 @@ facilities = {
     "hoengg": "facility:45598",
     "fluntern": "facility:45575",
 }
+niveaus = {#DODO allow cap
+    "e1": "niveau:914",
+    "e2": "niveau:712",
+    "ef": "beginner_friendly:1",
+    "im": "niveau:880",
+    "intermediate": "niveau:880",
+    "ad": "niveau:726",
+    "advanced": "niveau:726",
+}
+
 
 # keywords not in the f[i]=keyword notation
 nolist = {"nofitness": "without_fitness=1"}
@@ -53,6 +63,7 @@ keywords = dict()
 keywords.update(sports)
 keywords.update(weekdays)
 keywords.update(facilities)
+keywords.update(niveaus)
 keywords.update(nolist)
 
 class Lesson:
@@ -109,10 +120,12 @@ def keyword_show():
     print("sports:\t\t", *list(sports.keys()))
     print("facilities:\t", *list(facilities.keys()))
     print("weekdays:\t", *list(weekdays.keys()))
+    print("niveaus:\t", *list(niveaus.keys()))
     others = set(keywords.keys())
     others.difference_update(set(sports.keys()))
     others.difference_update(set(facilities.keys()))
     others.difference_update(set(weekdays.keys()))
+    others.difference_update(set(niveaus.keys()))
     print("others:\t\t", *list(others))
 
 # given a list of keywords (args) match them to the keyword dictionary and

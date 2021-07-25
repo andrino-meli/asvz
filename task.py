@@ -281,7 +281,7 @@ def lesson_enroll(lesson_id, enroll):
         prompt_print(f'Error: {lesson_id} fully booked. Consider calling `sneak.')
         return
     try:
-        button = wait_for_element(By.XPATH, '//button[@title="Login"]', timeout=1)
+        button = wait_for_element(By.XPATH, '//button[@title="Login"]', timeout=10)
         button.click()
         sleep(5) # wait for possible redirect
         if LOGIN_URL in driver.current_url:
