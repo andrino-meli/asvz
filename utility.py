@@ -5,11 +5,11 @@ os.system("")
 # yeah i know -> really some magic happening here
 
 # This file includes all constants and things included by every other file
-QUERY_DEBUG = False
-PROPERTIES_DEBUG = True
-SPLIT_DEBUG = True
 DEBUG = True
-HEADLESS = False
+QUERY_DEBUG = False
+PROPERTIES_DEBUG = False
+SPLIT_DEBUG = False
+HEADLESS = False  # TODO: does not work : (
 
 POLL_INTERVALL = 30  # sneak polling intervall in s
 # date format in asvz app
@@ -17,18 +17,23 @@ DATE_FMT = "%d.%m.%Y %H:%M"
 # more readable and short format for printings to user
 A_DATE_FMT = "%a %d.%b %H:%M"
 TIME_FMT = "%H:%M"
-LOGIN_URL = 'https://auth.asvz.ch/account/login'
+LOGIN_URL = "https://auth.asvz.ch/account/login"
+RANDOM_URL = "https://schalter.asvz.ch/tn/lessons/191193"  # TODO: get rid of this?
+
 
 class LoginRequiredException(Exception):
     pass
+
 
 # ansi escape sequence
 def esc(code):
     return f"\033[{code}"
 
+
 # ansi colour
 def ansi(code):
     return f"\033[{code}m"
+
 
 CLEAR = ansi("0")
 RESET = ansi("0")
@@ -84,6 +89,8 @@ def prompt_print(*args):
 
 
 def debug_print(*args):
+    if not DEBUG:
+        return
     print(esc("2D"), RESET, end="")
     print(f"{GREY}Debug: ", *args, end="")
     print(f"{RESET}\n> ", end="")

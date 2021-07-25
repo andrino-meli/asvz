@@ -1,4 +1,4 @@
-import threading, pyperclip, sys
+import threading, pyperclip, sys, pickle, errno
 from selenium import webdriver
 from selenium.common.exceptions import (
     NoSuchElementException,
@@ -23,12 +23,15 @@ import lesson
 from utility import *
 
 
-def create_driver(headless=HEADLESS, app=not DEBUG):
+def create_driver(headless=HEADLESS, app=HEADLESS):
     global driver
     options = webdriver.chrome.options.Options()
     options.add_argument(
         "--user-data-dir=" + os.path.expanduser("~/.config/chromium")
     )  # cookie storage
+    options.add_argument("--window-size=1440, 900")  # make it less fiddely
+    options.add_argument("--disable-extensions")
+    options.add_argument("--start-maximized")
     if headless:
         options.add_argument("--headless")
     if app:
@@ -37,13 +40,24 @@ def create_driver(headless=HEADLESS, app=not DEBUG):
         debug_print(f"starting chrome with {options}")
         driver = webdriver.Chrome(options=options)  # uses chromedriver per default
         driver.implicitly_wait(0)
+        driver.get("https://schalter.asvz.ch/tn/lessons/191193")
+        sleep(1)
+        # set login cookie
+        if os.path.exists(os.path.expanduser("~/.cache/asvz/tk")):
+            cfile = open(os.path.expanduser("~/.cache/asvz/tk"), "rb")
+            login_cookies = pickle.load(cfile)
+            for c in login_cookies:
+                driver.add_cookie(c)
+        else:
+            warn_print("no login cookie: run `login` first")
+        cookies = driver.get_cookies()
+        debug_print("cookies:", cookies)
         return driver
     except InvalidArgumentException as ex:
         if "--user-data-dir" in ex.msg:
             # driver.close() #TODO: make this work somehow
             print("Error: Only one instance of asvz can run. Allready running.")
             sys.exit(114)
-            # maybee use sys.exit() or os.exit()?
         else:
             raise ex
 
@@ -102,7 +116,7 @@ def safe_page_load(url):
             sleep(0.3)
     if LOGIN_URL in driver.current_url:
         if DEBUG:
-            warn_print("redirected to login", url)
+            warn_print("redirected to login during opening of: ", url)
         raise LoginRequiredException("Redirected to the login page")
     sleep(0.3)
 
@@ -184,6 +198,7 @@ def query_inscribed():
     except TimeoutException:
         prompt_print("Error: page not loaded")
 
+
 def lesson_properties(lesson_id, show=False, copy=False):
     url = "https://schalter.asvz.ch/tn/lessons/" + lesson_id
     safe_page_load(url)
@@ -194,7 +209,7 @@ def lesson_properties(lesson_id, show=False, copy=False):
     for p in evpr:
         name = p.find_element_by_tag_name("dt").text
         value = [x.text for x in p.find_elements_by_tag_name("dd")]
-        if len(value) == 1: # if only one element move out of list
+        if len(value) == 1:  # if only one element move out of list
             value = value[0]
         if name == "Anmeldezeitraum":
             (winopen, winclose) = value.split(" - ")
@@ -204,7 +219,7 @@ def lesson_properties(lesson_id, show=False, copy=False):
             properties["derolldue"] = mktime(strptime(value, DATE_FMT))
         else:
             properties[name] = value
-            
+
     # debug print
     if PROPERTIES_DEBUG:
         debug_print(properties)
@@ -288,31 +303,59 @@ def check_window(lesson_id, enroll):
 
 def manuall_login(executer):
     global driver
-    warn_print("LOGIN REQUIRED - opening browser - pls. login manually.")
+    warn_print("LOGIN REQUIRED, opening browser. Do standby.")
     # stop the executer
     executer.doStop = True
     close_driver()
     create_driver(headless=False)
-    # login
-    driver.get(LOGIN_URL)
-    while driver.current_url != "https://auth.asvz.ch/Manage/Index":
-        sleep(0.5)
-    prompt_print("Manuall Login Successfull!")
-    # strange but we have to relogin to save the cookie
-    # button = driver.find_element_by_xpath('//button[@title="Login"]')
-    # button.click()
-
-    # restart driver
-    close_driver()
+    # this is a bit weird: we cant just login on the login page as the required
+    # token then is not generated. Rather we need to land on the login page via
+    # clicking 'login' in a lesson page - this then generates a callback which
+    # automatically makes the required token. (i have little knowledege of
+    # backend web technology)
+    # TODO: as we invoke a random lesson from the past this link might go
+    # invalid
+    # TODO: check in advance if a token will run out when trying to enroll at a
+    # later moment
+    random_url = "https://schalter.asvz.ch/tn/lessons/191193"
+    driver.get(random_url)
+    try:
+        button = wait_for_element(By.XPATH, '//button[@title="Login"]', timeout=10)
+        button.click()
+        warn_print("Login manually in the opened browser window and wait for redirect.")
+        while "https://auth.asvz.ch/account/login?" not in driver.current_url:
+            sleep(0.5)  # wait until we are surely redirected
+        # wait for manuall action by the user
+        while driver.current_url != random_url:
+            sleep(0.5)
+        # save login cookie
+        login_cookies = driver.get_cookies()
+        debug_print("login cookie:", login_cookies)
+        cpath = os.path.expanduser("~/.cache/asvz/tk")
+        if not os.path.exists(os.path.dirname(cpath)):  # check parent-dir exist
+            try:
+                os.makedirs(os.path.dirname(cpath))
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
+        cfile = open(cpath, "wb")
+        pickle.dump(login_cookies, cfile)
+        cfile.close()
+        # finish
+        prompt_print("Manuall Login Successfull!")
+        close_driver()
+    except TimeoutException:
+        prompt_print(
+            f"{RED}Login Failed: could not find a 'Login' button. Maybee we are allready loged in"
+        )
     create_driver()
-    # let main restart the taskExecuter
-    debug_print("deleting the executer")
+    # TODO: wow this is hacky: how about a true server client model - also for
+    # synchronized in and output?
+    debug_print("deleting the executer")  # let main restart the taskExecuter
     del executer
 
 
 def lesson_enroll(lesson_id, enroll):
-    # TODO: make properties not required multiple times
-    # maybee create a lesson object instead of the lesson id
     url = "https://schalter.asvz.ch/tn/lessons/" + str(lesson_id)
     properties = lesson_properties(lesson_id)  # loads url for us
     if enroll and properties["Freie Plätze"] == "0":
@@ -365,7 +408,9 @@ class Task:
     taskid = 0
 
     # Note one must lock the thread before entering init
-    def __init__(self, function, args, kwargs=None,imediate=False, start=None, stop=None):
+    def __init__(
+        self, function, args, kwargs=None, imediate=False, start=None, stop=None
+    ):
         if not imediate and start is None:
             raise ValueError("A task must be imediate or have a start time.")
         if not type(args) is list:
@@ -387,11 +432,13 @@ class Task:
         # a task shall not have a return value, rather prefere raising an # exception
         # a task is expected to print to stdout
         if DEBUG:
-            debug_print(f"executing task {self.task_id}: {self.function} with arguments {self.args}")
+            debug_print(
+                f"executing task {self.task_id}: {self.function} with arguments {self.args}"
+            )
         if self.kwargs is None:
             self.function(*self.args)
         else:
-            self.function(*self.args,**self.kwargs)
+            self.function(*self.args, **self.kwargs)
 
     def __str__(self):
         return self.__repr__()
