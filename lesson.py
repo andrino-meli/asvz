@@ -1,10 +1,20 @@
 from fuzzywuzzy.fuzz import ratio
 from utility import *
-from time import sleep, time, mktime, strptime, localtime,strftime,struct_time,asctime
+from time import (
+    sleep,
+    time,
+    mktime,
+    strptime,
+    localtime,
+    strftime,
+    struct_time,
+    asctime,
+)
 import locale
 
 # set local for time reading
-locale.setlocale(locale.LC_ALL, locale='de_CH.UTF-8')
+locale.setlocale(locale.LC_ALL, locale="de_CH.UTF-8")
+
 
 class QueryException(Exception):
     pass
@@ -50,7 +60,7 @@ facilities = {
     "hoengg": "facility:45598",
     "fluntern": "facility:45575",
 }
-niveaus = {#DODO allow cap
+niveaus = {  # DODO allow cap
     "e1": "niveau:914",
     "e2": "niveau:712",
     "ef": "beginner_friendly:1",
@@ -69,6 +79,7 @@ keywords.update(time)
 keywords.update(facilities)
 keywords.update(niveaus)
 keywords.update(nolist)
+
 
 class Lesson:
     url = None
@@ -110,14 +121,15 @@ class Lesson:
             self.weekday[:2],
             self.day,
             self.month,
-            strftime(TIME_FMT,localtime(self.start)),
-            strftime(TIME_FMT,localtime(self.end)),
+            strftime(TIME_FMT, localtime(self.start)),
+            strftime(TIME_FMT, localtime(self.end)),
             self.sport[:13],
             trainer[:16],
             facility[:12],
             self.niveau[:35],
             self.enrollment_string[:15],
         )
+
 
 # TODO add time and date?
 def keyword_show():
@@ -131,6 +143,7 @@ def keyword_show():
     others.difference_update(set(time.keys()))
     others.difference_update(set(niveaus.keys()))
     print("others:\t\t", *list(others))
+
 
 # given a list of keywords (args) match them to the keyword dictionary and
 # build a query url from it and return the url.
@@ -173,6 +186,7 @@ def match_keywords(args):
         correction + "\t If this is not desired consider calling `dict`.",
     )
 
+
 # given a lesson l with date und url allready given
 # add the rest of the information of split to l
 # Basially this is a helper function mangeling the website content
@@ -183,12 +197,12 @@ def match_keywords(args):
 # This function could be implemented easier by calling properties but this
 # requires an additional url to be loaded for each lesson we query (slow)
 def from_split(l, split):
-    fmt = '%d.%B.%Y %H:%M'
+    fmt = "%d.%B.%Y %H:%M"
     year = str(localtime().tm_year)
-    if int(localtime().tm_mon) == 12 and l.month == 'Januar':
-        year += 1 # should fix year when runnign over newyear
-    l.start = mktime(strptime(f'{l.day}.{l.month}.{year} '+split[0],fmt))
-    l.end = mktime(strptime(f'{l.day}.{l.month}.{year} '+split[1][-5:],fmt))
+    if int(localtime().tm_mon) == 12 and l.month == "Januar":
+        year += 1  # should fix year when runnign over newyear
+    l.start = mktime(strptime(f"{l.day}.{l.month}.{year} " + split[0], fmt))
+    l.end = mktime(strptime(f"{l.day}.{l.month}.{year} " + split[1][-5:], fmt))
     l.sport = split[2]
     l.niveau = split[3]
     l.facility = split[4]

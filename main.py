@@ -141,19 +141,26 @@ def main():
         i.strip()
     if command[0] == "login":
         Task(manuall_login, [TaskExecuter.executer], imediate=True)
+    elif command[0] == "logout":
+        Task(manuall_logout, [], imediate=True)
     elif command[0] in ["prop", "props", "properties", "copy"]:
         l = command[1]
         if l is None or l == "":
             pass
         elif len(l) != 6 or not l.isdecimal():
             warn_print(f"provided lesson {l} is not  a 6 digit number")
-        elif command[0] == 'copy':
-            Task(lesson_properties, [l], kwargs={'show':False,'copy':True}, imediate=True)
+        elif command[0] == "copy":
+            Task(
+                lesson_properties,
+                [l],
+                kwargs={"show": False, "copy": True},
+                imediate=True,
+            )
         else:
-            Task(lesson_properties, [l], kwargs={'show':True}, imediate=True)
-    elif command[0] == 'list':
+            Task(lesson_properties, [l], kwargs={"show": True}, imediate=True)
+    elif command[0] == "list":
         Task(query_inscribed, [], imediate=True)
-    elif command[0] == 'dict':
+    elif command[0] == "dict":
         lesson.keyword_show()
         print(
             "\nOr consider contributing to https://github.com/andrino-meli/asvz in case your keyword is not yet available. (It's really easy)."

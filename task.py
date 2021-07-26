@@ -20,18 +20,15 @@ from time import (
 )
 
 import lesson
+from localstorage import LocalStorage
 from utility import *
 
 
-def create_driver(headless=HEADLESS, app=HEADLESS):
+def create_driver(headless=HEADLESS, app=not HEADLESS):
     global driver
     options = webdriver.chrome.options.Options()
-    options.add_argument(
-        "--user-data-dir=" + os.path.expanduser("~/.config/chromium")
-    )  # cookie storage
-    options.add_argument("--window-size=1440, 900")  # make it less fiddely
+    options.add_argument("--user-data-dir=" + os.path.expanduser("~/.config/chromium"))
     options.add_argument("--disable-extensions")
-    options.add_argument("--start-maximized")
     if headless:
         options.add_argument("--headless")
     if app:
@@ -40,18 +37,19 @@ def create_driver(headless=HEADLESS, app=HEADLESS):
         debug_print(f"starting chrome with {options}")
         driver = webdriver.Chrome(options=options)  # uses chromedriver per default
         driver.implicitly_wait(0)
-        driver.get("https://schalter.asvz.ch/tn/lessons/191193")
+        # set login token
+        driver.get(RANDOM_URL)
+        storage = LocalStorage(driver)
         sleep(1)
-        # set login cookie
         if os.path.exists(os.path.expanduser("~/.cache/asvz/tk")):
             cfile = open(os.path.expanduser("~/.cache/asvz/tk"), "rb")
-            login_cookies = pickle.load(cfile)
-            for c in login_cookies:
-                driver.add_cookie(c)
+            token = pickle.load(cfile)
+            (k, v) = token
+            storage.set(k, v)
+            debug_print(f"set login token {k}")
+            cfile.close()
         else:
-            warn_print("no login cookie: run `login` first")
-        cookies = driver.get_cookies()
-        debug_print("cookies:", cookies)
+            warn_print("no login token found: run `login` first")
         return driver
     except InvalidArgumentException as ex:
         if "--user-data-dir" in ex.msg:
@@ -111,7 +109,6 @@ def safe_page_load(url):
         WebDriverWait(driver, 2).until(EC.staleness_of(tmp))
     else:
         driver.get(url)
-        # TODO: does not work with redirects
         while driver.current_url != url and LOGIN_URL not in driver.current_url:
             sleep(0.3)
     if LOGIN_URL in driver.current_url:
@@ -302,25 +299,26 @@ def check_window(lesson_id, enroll):
 
 
 def manuall_login(executer):
+    """
+    Okay this is webtechnology so try to stick with me.
+    First we note that a token (similar to a cookie) is saved to identify the user. This token is
+    saved in three places: the browser local storage in headless and headfull
+    mode and in a token file in ~/.cache/asvz/tk.
+
+    Whever we login in manually in the headfull browser the token gets writen
+    to file and from there loaded in headless mode. In priciple the chromium user-data-dir
+    should fix this issue but somehow does not.
+    """
     global driver
+    manuall_logout()
     warn_print("LOGIN REQUIRED, opening browser. Do standby.")
     # stop the executer
     executer.doStop = True
     close_driver()
     create_driver(headless=False)
-    # this is a bit weird: we cant just login on the login page as the required
-    # token then is not generated. Rather we need to land on the login page via
-    # clicking 'login' in a lesson page - this then generates a callback which
-    # automatically makes the required token. (i have little knowledege of
-    # backend web technology)
-    # TODO: as we invoke a random lesson from the past this link might go
-    # invalid
-    # TODO: check in advance if a token will run out when trying to enroll at a
-    # later moment
-    random_url = "https://schalter.asvz.ch/tn/lessons/191193"
-    driver.get(random_url)
+    driver.get(RANDOM_URL)
     try:
-        button = wait_for_element(By.XPATH, '//button[@title="Login"]', timeout=10)
+        button = wait_for_element(By.XPATH, '//button[@title="Login"]', timeout=5)
         button.click()
         warn_print("Login manually in the opened browser window and wait for redirect.")
         while "https://auth.asvz.ch/account/login?" not in driver.current_url:
@@ -328,31 +326,59 @@ def manuall_login(executer):
         # wait for manuall action by the user
         while driver.current_url != random_url:
             sleep(0.5)
-        # save login cookie
-        login_cookies = driver.get_cookies()
-        debug_print("login cookie:", login_cookies)
-        cpath = os.path.expanduser("~/.cache/asvz/tk")
-        if not os.path.exists(os.path.dirname(cpath)):  # check parent-dir exist
-            try:
-                os.makedirs(os.path.dirname(cpath))
-            except OSError as exc:
-                if exc.errno != errno.EEXIST:
-                    raise
-        cfile = open(cpath, "wb")
-        pickle.dump(login_cookies, cfile)
-        cfile.close()
-        # finish
-        prompt_print("Manuall Login Successfull!")
-        close_driver()
     except TimeoutException:
-        prompt_print(
-            f"{RED}Login Failed: could not find a 'Login' button. Maybee we are allready loged in"
+        debug_print(
+            f"Can not find a 'Login' button. Maybee we are allready loged in. Contine trying to save token."
         )
+    # save login tokens from the Web Storage API local storage
+    storage = LocalStorage(driver)
+    token = None
+    debug_print(type(storage.items()), storage)
+    for k in storage.keys():  # items() does somehow not work!
+        v = storage.get(k)
+        debug_print(f"localstorage {k}: {v}")
+        if "oidc.user:https://auth.asvz.ch:" in k:
+            token = (k, v)
+    if token is None:
+        prompt_print("{RED}Manuall Login Failed - no token generated!")
+        return
+    cpath = os.path.expanduser("~/.cache/asvz/tk")
+    if not os.path.exists(os.path.dirname(cpath)):  # check parent-dir exist
+        try:
+            os.makedirs(os.path.dirname(cpath))
+        except OSError as exc:
+            if exc.errno != errno.EEXIST:
+                raise
+    cfile = open(cpath, "wb")
+    pickle.dump(token, cfile)
+    cfile.close()
+    # finish
+    prompt_print("Manuall Login Successfull!")
+    close_driver()  # close the headfull driver
     create_driver()
     # TODO: wow this is hacky: how about a true server client model - also for
     # synchronized in and output?
     debug_print("deleting the executer")  # let main restart the taskExecuter
     del executer
+
+
+def manuall_logout():
+    """Logs out manually from asvz webapp.
+    Clears the token file on disk as well as all local storage
+    for the headless browser session.
+    Does not clear the local storage for the headfull browser session (for
+    unknown reason).
+    """
+    global driver
+    storage = LocalStorage(driver)
+    driver.get("https://schalter.asvz.ch")
+    sleep(2)
+    storage.clear()
+    debug_print("Cleared local storage.")
+    cpath = os.path.expanduser("~/.cache/asvz/tk")
+    if os.path.exists(cpath):  # check parent-dir exist
+        os.remove(cpath)
+        debug_print("Removed file.")
 
 
 def lesson_enroll(lesson_id, enroll):

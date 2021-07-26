@@ -9,7 +9,7 @@ DEBUG = True
 QUERY_DEBUG = False
 PROPERTIES_DEBUG = False
 SPLIT_DEBUG = False
-HEADLESS = False  # TODO: does not work : (
+HEADLESS = True
 
 POLL_INTERVALL = 30  # sneak polling intervall in s
 # date format in asvz app
@@ -45,17 +45,16 @@ GREY = ansi("38;2;150;150;150")
 # HELP STRING
 # TODO: check interactive ussage potential or delete if from the help string
 HELP_STRING = f'\
-{RESET}This asvz helper can be run interactively or not.\n\
-In interactive mode one can type commands repeatedly and crossreference\n\
-for example querys easily.\n\
-In noninteractive mode one gives the command as a command line argument.\n\
+{RESET}This asvz helper is run interactively.\n\
+One can type commands repeatedly.\n\
 \n\
-Note that this tool heavily relies on browser cahce for password storage.\n\
+Note that this tool relies on Web Storage API (Browser Feature) for password storage.\n\
 Therefor the first time one is required to login in ASVZ manually. Further logins\n\
-are done by this application by itself with coockies. NOTE however from time\n\
+are done by this application by itself with something similar to a cookie. NOTE however from time\n\
 to time these get invalid and one is simply not allowed to enroll anymore\n\
 due to "missing membership". Then simply log out and in again manually.\n\
-This is maybee a bit tedious but does not require saving ETHZ credentials.\n\
+This is maybee a bit tedious but does not require saving confidential credentials.\n\
+\n\
 If you can not enroll in a lesson because there is no place left or the\n\
 enrollment window is yet closed consider letting the tool\n\
 check in later automatically for you.\n\
@@ -64,7 +63,8 @@ available commands:\n\
 ===================\n\
 {BOLD}q{RESET} | {BOLD}q{RESET} | ^D | ^C         quits interaction\n\
 {BOLD}help{RESET}                    prints this help message\n\
-{BOLD}login{RESET}                   manually login to ASVZ -> chaches cookies for later\n\
+{BOLD}login{RESET}                   manually login to ASVZ -> chaches credentials\n\
+{BOLD}logout{RESET}\n\
 {BOLD}list{RESET}                    shows all enrolled trainings\n\
 {BOLD}query{RESET} KEYWORDS          searches for trainings according to keywords\n\
 {BOLD}dict{RESET}                    prints a dictionary of available KEYWORDS allowd in queries.\n\
